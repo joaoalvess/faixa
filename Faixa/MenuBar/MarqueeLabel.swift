@@ -1,7 +1,7 @@
 import AppKit
 
 final class MarqueeLabel: NSView {
-    private let maxWidth: CGFloat
+    let width: CGFloat
     private let gap: CGFloat = 25
     private let pointsPerSecond: CGFloat = 25
     private let font = NSFont.menuBarFont(ofSize: 0)
@@ -10,20 +10,20 @@ final class MarqueeLabel: NSView {
     private var isScrolling = false
     private var textWidth: CGFloat = 0
 
-    var displayedWidth: CGFloat {
-        min(textWidth, maxWidth)
+    private var loopDistance: CGFloat {
+        textWidth + gap
     }
 
-    private var overflows: Bool {
-        textWidth > maxWidth
+    private var copyCount: Int {
+        isScrolling ? Int(ceil(width / loopDistance)) + 1 : 1
     }
 
     private var stripSize: NSSize {
-        NSSize(width: overflows ? textWidth * 2 + gap : textWidth, height: ceil(font.ascender - font.descender))
+        NSSize(width: CGFloat(copyCount - 1) * loopDistance + textWidth, height: ceil(font.ascender - font.descender))
     }
 
-    init(maxWidth: CGFloat) {
-        self.maxWidth = maxWidth
+    init(width: CGFloat) {
+        self.width = width
         super.init(frame: .zero)
         let hostLayer = CALayer()
         hostLayer.addSublayer(stripLayer)
@@ -42,9 +42,9 @@ final class MarqueeLabel: NSView {
         if newText != text {
             text = newText
             textWidth = ceil((text as NSString).size(withAttributes: [.font: font]).width)
-            redrawStrip()
         }
         isScrolling = shouldScroll
+        redrawStrip()
         restartAnimation()
     }
 
@@ -98,9 +98,8 @@ final class MarqueeLabel: NSView {
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
         effectiveAppearance.performAsCurrentDrawingAppearance {
             let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.labelColor]
-            let origins: [CGFloat] = overflows ? [0, textWidth + gap] : [0]
-            for x in origins {
-                (text as NSString).draw(at: NSPoint(x: x, y: -font.descender), withAttributes: attributes)
+            for index in 0..<copyCount {
+                (text as NSString).draw(at: NSPoint(x: CGFloat(index) * loopDistance, y: -font.descender), withAttributes: attributes)
             }
         }
         NSGraphicsContext.restoreGraphicsState()
@@ -112,13 +111,12 @@ final class MarqueeLabel: NSView {
 
     private func restartAnimation() {
         stripLayer.removeAnimation(forKey: "marquee")
-        guard isScrolling, overflows else { return }
+        guard isScrolling else { return }
 
-        let distance = textWidth + gap
         let animation = CABasicAnimation(keyPath: "transform.translation.x")
         animation.fromValue = 0
-        animation.toValue = -distance
-        animation.duration = distance / pointsPerSecond
+        animation.toValue = -loopDistance
+        animation.duration = loopDistance / pointsPerSecond
         animation.repeatCount = .infinity
         animation.timingFunction = CAMediaTimingFunction(name: .linear)
         stripLayer.add(animation, forKey: "marquee")

@@ -111,10 +111,10 @@ private final class NowPlayingView: NSView {
     private let artworkSize: CGFloat = 20
     private let spacing: CGFloat = 6
     private let artworkView = NSImageView()
-    private let marquee = MarqueeLabel(maxWidth: 90)
+    private let marquee = MarqueeLabel(width: 90)
 
     var fittingWidth: CGFloat {
-        horizontalPadding * 2 + artworkSize + spacing + marquee.displayedWidth
+        horizontalPadding * 2 + artworkSize + spacing + marquee.width
     }
 
     init() {
@@ -146,7 +146,7 @@ private final class NowPlayingView: NSView {
         marquee.frame = NSRect(
             x: horizontalPadding + artworkSize + spacing,
             y: 0,
-            width: marquee.displayedWidth,
+            width: marquee.width,
             height: bounds.height
         )
     }
