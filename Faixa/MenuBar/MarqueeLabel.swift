@@ -4,9 +4,8 @@ final class MarqueeLabel: NSView {
     private let maxWidth: CGFloat
     private let gap: CGFloat = 25
     private let pointsPerSecond: CGFloat = 25
-    private let strip = NSView()
-    private let leadingLabel = NSTextField(labelWithString: "")
-    private let trailingLabel = NSTextField(labelWithString: "")
+    private let font = NSFont.menuBarFont(ofSize: 0)
+    private let stripLayer = CALayer()
     private var text = ""
     private var isScrolling = false
     private var textWidth: CGFloat = 0
@@ -15,19 +14,22 @@ final class MarqueeLabel: NSView {
         min(textWidth, maxWidth)
     }
 
+    private var overflows: Bool {
+        textWidth > maxWidth
+    }
+
+    private var stripSize: NSSize {
+        NSSize(width: overflows ? textWidth * 2 + gap : textWidth, height: ceil(font.ascender - font.descender))
+    }
+
     init(maxWidth: CGFloat) {
         self.maxWidth = maxWidth
         super.init(frame: .zero)
+        let hostLayer = CALayer()
+        hostLayer.masksToBounds = true
+        hostLayer.addSublayer(stripLayer)
+        layer = hostLayer
         wantsLayer = true
-        layer?.masksToBounds = true
-        strip.wantsLayer = true
-        for label in [leadingLabel, trailingLabel] {
-            label.font = .menuBarFont(ofSize: 0)
-            label.textColor = .labelColor
-            label.lineBreakMode = .byClipping
-            strip.addSubview(label)
-        }
-        addSubview(strip)
     }
 
     @available(*, unavailable)
@@ -37,30 +39,80 @@ final class MarqueeLabel: NSView {
 
     func update(text newText: String, isScrolling shouldScroll: Bool) {
         guard newText != text || shouldScroll != isScrolling else { return }
-        text = newText
+        if newText != text {
+            text = newText
+            textWidth = ceil((text as NSString).size(withAttributes: [.font: font]).width)
+            redrawStrip()
+        }
         isScrolling = shouldScroll
-        leadingLabel.stringValue = text
-        trailingLabel.stringValue = text
-        textWidth = ceil(leadingLabel.fittingSize.width)
-        needsLayout = true
-        layoutSubtreeIfNeeded()
         restartAnimation()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        needsLayout = true
     }
 
     override func layout() {
         super.layout()
-        let labelHeight = ceil(leadingLabel.fittingSize.height)
-        let labelY = (bounds.height - labelHeight) / 2
-        strip.frame = NSRect(x: 0, y: 0, width: textWidth * 2 + gap, height: bounds.height)
-        leadingLabel.frame = NSRect(x: 0, y: labelY, width: textWidth, height: labelHeight)
-        trailingLabel.frame = NSRect(x: textWidth + gap, y: labelY, width: textWidth, height: labelHeight)
-        trailingLabel.isHidden = textWidth <= maxWidth
+        let size = stripSize
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        stripLayer.frame = CGRect(x: 0, y: ((bounds.height - size.height) / 2).rounded(), width: size.width, height: size.height)
+        CATransaction.commit()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        redrawStrip()
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        redrawStrip()
+    }
+
+    private func redrawStrip() {
+        let size = stripSize
+        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        guard size.width > 0,
+              let bitmap = NSBitmapImageRep(
+                  bitmapDataPlanes: nil,
+                  pixelsWide: Int(ceil(size.width * scale)),
+                  pixelsHigh: Int(ceil(size.height * scale)),
+                  bitsPerSample: 8,
+                  samplesPerPixel: 4,
+                  hasAlpha: true,
+                  isPlanar: false,
+                  colorSpaceName: .deviceRGB,
+                  bytesPerRow: 0,
+                  bitsPerPixel: 0
+              )
+        else {
+            stripLayer.contents = nil
+            return
+        }
+        bitmap.size = size
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.labelColor]
+            let origins: [CGFloat] = overflows ? [0, textWidth + gap] : [0]
+            for x in origins {
+                (text as NSString).draw(at: NSPoint(x: x, y: -font.descender), withAttributes: attributes)
+            }
+        }
+        NSGraphicsContext.restoreGraphicsState()
+
+        stripLayer.contents = bitmap.cgImage
+        stripLayer.contentsScale = scale
+        needsLayout = true
     }
 
     private func restartAnimation() {
-        guard let layer = strip.layer else { return }
-        layer.removeAnimation(forKey: "marquee")
-        guard isScrolling, textWidth > maxWidth else { return }
+        stripLayer.removeAnimation(forKey: "marquee")
+        guard isScrolling, overflows else { return }
 
         let distance = textWidth + gap
         let animation = CABasicAnimation(keyPath: "transform.translation.x")
@@ -69,6 +121,6 @@ final class MarqueeLabel: NSView {
         animation.duration = distance / pointsPerSecond
         animation.repeatCount = .infinity
         animation.timingFunction = CAMediaTimingFunction(name: .linear)
-        layer.add(animation, forKey: "marquee")
+        stripLayer.add(animation, forKey: "marquee")
     }
 }
