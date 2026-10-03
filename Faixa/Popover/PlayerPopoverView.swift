@@ -35,29 +35,6 @@ struct PlayerPopoverView: View {
         .padding(.top, 13.5)
         .padding(.bottom, 21)
         .frame(width: 247)
-        .background {
-            Backdrop(image: player.artwork)
-        }
-    }
-}
-
-private struct Backdrop: View {
-    let image: NSImage?
-
-    var body: some View {
-        ZStack {
-            if let image {
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-                    .blur(radius: 45, opaque: true)
-                    .opacity(0.7)
-            }
-            Color.black.opacity(0.2)
-        }
-        .ignoresSafeArea()
     }
 }
 

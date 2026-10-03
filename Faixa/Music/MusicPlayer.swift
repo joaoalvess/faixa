@@ -7,6 +7,7 @@ final class MusicPlayer {
     private(set) var state: PlaybackState = .stopped
     private(set) var track: Track?
     private(set) var artwork: NSImage?
+    private(set) var artworkColor: NSColor?
     private(set) var isShuffleEnabled = false
     private var anchoredPosition: TimeInterval = 0
     private var anchorDate = Date()
@@ -81,6 +82,7 @@ final class MusicPlayer {
         if snapshot.track != track {
             track = snapshot.track
             artwork = track == nil ? nil : scripting.artwork()
+            artworkColor = artwork?.averageColor
         }
         if state != .stopped {
             refreshDetails()

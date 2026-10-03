@@ -62,6 +62,19 @@ final class StatusItemController: NSObject {
         player.refreshDetails()
         NSApp.activate()
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        tintPopoverGlass(with: player.artworkColor)
+    }
+
+    private func tintPopoverGlass(with color: NSColor?) {
+        guard popover.isShown, let frameView = popover.contentViewController?.view.superview else { return }
+        glassView(in: frameView)?.tintColor = color?.withAlphaComponent(0.5)
+    }
+
+    private func glassView(in view: NSView) -> NSGlassEffectView? {
+        if let glass = view as? NSGlassEffectView {
+            return glass
+        }
+        return view.subviews.lazy.compactMap { self.glassView(in: $0) }.first
     }
 
     private func observe() {
@@ -74,6 +87,7 @@ final class StatusItemController: NSObject {
 
     private func render() {
         guard let button = statusItem.button else { return }
+        tintPopoverGlass(with: player.artworkColor)
 
         guard let track = player.track, player.state != .stopped else {
             nowPlayingView.isHidden = true
