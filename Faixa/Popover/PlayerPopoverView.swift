@@ -106,7 +106,7 @@ private struct ControlPanel: View {
                 ControlButton(symbol: "shuffle", size: 13, width: 29.5) {
                     player.toggleShuffle()
                 }
-                .foregroundStyle(.white.opacity(player.isShuffleEnabled ? 0.9 : 0.55))
+                .foregroundStyle(player.isShuffleEnabled ? Color.musicAccent : .white.opacity(0.55))
             }
 
             ProgressSection(player: player)
@@ -141,8 +141,12 @@ private struct LinkButton: View {
                 didCopy = false
             }
         }
-        .foregroundStyle(.white.opacity(0.55))
+        .foregroundStyle(didCopy ? Color.musicAccent : .white.opacity(0.55))
     }
+}
+
+private extension Color {
+    static let musicAccent = Color(.sRGB, red: 250 / 255, green: 45 / 255, blue: 72 / 255)
 }
 
 private struct ControlButton: View {
