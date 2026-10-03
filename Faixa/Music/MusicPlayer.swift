@@ -7,6 +7,12 @@ final class MusicPlayer {
     private(set) var state: PlaybackState = .stopped
     private(set) var track: Track?
     private(set) var artwork: NSImage?
+    private(set) var isShuffleEnabled = false
+    private(set) var repeatMode: RepeatMode = .off
+    private(set) var isFavorited = false
+    private(set) var volume: Double = 0
+    private var anchoredPosition: TimeInterval = 0
+    private var anchorDate = Date()
 
     @ObservationIgnored private let scripting = MusicScripting()
 
@@ -35,10 +41,72 @@ final class MusicPlayer {
         }
     }
 
+    func position(at date: Date) -> TimeInterval {
+        guard state == .playing else { return anchoredPosition }
+        return min(anchoredPosition + date.timeIntervalSince(anchorDate), track?.duration ?? .infinity)
+    }
+
+    func refreshDetails() {
+        guard let details = scripting.details() else { return }
+        anchorPosition(details.position)
+        isShuffleEnabled = details.isShuffleEnabled
+        repeatMode = details.repeatMode
+        volume = details.volume
+        isFavorited = details.isFavorited
+    }
+
+    func playPause() {
+        scripting.playPause()
+    }
+
+    func nextTrack() {
+        scripting.nextTrack()
+    }
+
+    func previousTrack() {
+        scripting.previousTrack()
+    }
+
+    func seek(to position: TimeInterval) {
+        scripting.seek(to: position)
+        anchorPosition(position)
+    }
+
+    func setVolume(_ newVolume: Double) {
+        let rounded = newVolume.rounded()
+        guard rounded != volume else { return }
+        scripting.setVolume(Int(rounded))
+        volume = rounded
+    }
+
+    func toggleShuffle() {
+        scripting.setShuffle(!isShuffleEnabled)
+        isShuffleEnabled.toggle()
+    }
+
+    func setRepeat(_ mode: RepeatMode) {
+        scripting.setRepeat(mode)
+        repeatMode = mode
+    }
+
+    func toggleFavorite() {
+        guard let favorited = scripting.toggleFavorite() else { return }
+        isFavorited = favorited
+    }
+
+    private func anchorPosition(_ position: TimeInterval) {
+        anchoredPosition = position
+        anchorDate = Date()
+    }
+
     private func apply(_ snapshot: PlayerSnapshot) {
         state = snapshot.state
-        guard snapshot.track != track else { return }
-        track = snapshot.track
-        artwork = track == nil ? nil : scripting.artwork()
+        if snapshot.track != track {
+            track = snapshot.track
+            artwork = track == nil ? nil : scripting.artwork()
+        }
+        if state != .stopped {
+            refreshDetails()
+        }
     }
 }

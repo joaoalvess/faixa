@@ -13,6 +13,20 @@ enum PlaybackState: Sendable {
     case stopped
 }
 
+enum RepeatMode: String, CaseIterable, Sendable {
+    case off
+    case one
+    case all
+}
+
+struct PlayerDetails: Sendable {
+    let position: TimeInterval
+    let isShuffleEnabled: Bool
+    let repeatMode: RepeatMode
+    let volume: Double
+    let isFavorited: Bool
+}
+
 struct PlayerSnapshot: Sendable {
     let state: PlaybackState
     let track: Track?
