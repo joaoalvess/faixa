@@ -35,6 +35,26 @@ struct PlayerPopoverView: View {
         .padding(.top, 13.5)
         .padding(.bottom, 21)
         .frame(width: 247)
+        .background {
+            ArtworkGlow(image: player.artwork)
+        }
+    }
+}
+
+private struct ArtworkGlow: View {
+    let image: NSImage?
+
+    var body: some View {
+        if let image {
+            Image(nsImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .blur(radius: 40)
+                .opacity(0.4)
+                .ignoresSafeArea()
+        }
     }
 }
 
