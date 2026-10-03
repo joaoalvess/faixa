@@ -114,14 +114,7 @@ private struct ControlPanel: View {
         .padding(.top, 18)
         .padding(.horizontal, 12)
         .padding(.bottom, 5)
-        .background {
-            RoundedRectangle(cornerRadius: 11.5, style: .continuous)
-                .fill(Color(white: 0.21).opacity(0.94))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 11.5, style: .continuous)
-                        .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
-                }
-        }
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 11.5, style: .continuous))
     }
 }
 
