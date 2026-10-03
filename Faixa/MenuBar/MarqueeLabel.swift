@@ -4,6 +4,7 @@ final class MarqueeLabel: NSView {
     let width: CGFloat
     private let gap: CGFloat = 25
     private let pointsPerSecond: CGFloat = 25
+    private let systemBaselineOffset: CGFloat = 1.5
     private let font = NSFont.menuBarFont(ofSize: 0)
     private let stripLayer = CALayer()
     private var text = ""
@@ -58,7 +59,12 @@ final class MarqueeLabel: NSView {
         let size = stripSize
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        stripLayer.frame = CGRect(x: 0, y: ((bounds.height - size.height) / 2).rounded(), width: size.width, height: size.height)
+        stripLayer.frame = CGRect(
+            x: 0,
+            y: ((bounds.height - size.height) / 2).rounded() - systemBaselineOffset,
+            width: size.width,
+            height: size.height
+        )
         CATransaction.commit()
     }
 
