@@ -7,6 +7,7 @@ final class StatusItemController: NSObject {
     private let player: MusicPlayer
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let nowPlayingView = NowPlayingView()
+    private var outsideClickMonitor: Any?
 
     private lazy var idleImage: NSImage? = {
         let image = NSImage(systemSymbolName: "music.note", accessibilityDescription: "Faixa")
@@ -28,6 +29,7 @@ final class StatusItemController: NSObject {
         popover.hasFullSizeContent = true
         popover.appearance = NSAppearance(named: .darkAqua)
         popover.contentViewController = controller
+        popover.delegate = self
         return popover
     }()
 
@@ -63,6 +65,13 @@ final class StatusItemController: NSObject {
         NSApp.activate()
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         useClearPopoverGlass()
+        closePopoverOnOutsideClick()
+    }
+
+    private func closePopoverOnOutsideClick() {
+        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
+            self?.popover.performClose(nil)
+        }
     }
 
     private func useClearPopoverGlass() {
@@ -102,6 +111,15 @@ final class StatusItemController: NSObject {
         nowPlayingView.update(artwork: player.artwork, title: track.title, isPlaying: player.state == .playing)
         statusItem.length = nowPlayingView.fittingWidth
         nowPlayingView.frame = NSRect(x: 0, y: 0, width: nowPlayingView.fittingWidth, height: button.bounds.height)
+    }
+}
+
+extension StatusItemController: NSPopoverDelegate {
+    func popoverDidClose(_ notification: Notification) {
+        if let outsideClickMonitor {
+            NSEvent.removeMonitor(outsideClickMonitor)
+        }
+        outsideClickMonitor = nil
     }
 }
 
