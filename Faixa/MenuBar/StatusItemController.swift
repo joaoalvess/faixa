@@ -118,7 +118,7 @@ extension StatusItemController: NSPopoverDelegate {
 }
 
 private final class NowPlayingView: NSView {
-    private let horizontalPadding: CGFloat = 4
+    private let horizontalPadding: CGFloat = 1
     private let artworkSize: CGFloat = 20
     private let spacing: CGFloat = 6
     private let artworkView = NSImageView()
