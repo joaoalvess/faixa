@@ -5,8 +5,10 @@ final class MarqueeLabel: NSView {
     private let gap: CGFloat = 25
     private let pointsPerSecond: CGFloat = 25
     private let systemBaselineOffset: CGFloat = 1.5
+    private let fadeWidth: CGFloat = 8
     private let font = NSFont.menuBarFont(ofSize: 0)
     private let stripLayer = CALayer()
+    private let fadeLayer = CAGradientLayer()
     private var text = ""
     private var isScrolling = false
     private var textWidth: CGFloat = 0
@@ -26,8 +28,12 @@ final class MarqueeLabel: NSView {
     init(width: CGFloat) {
         self.width = width
         super.init(frame: .zero)
+        fadeLayer.colors = [NSColor.clear.cgColor, NSColor.black.cgColor, NSColor.black.cgColor, NSColor.clear.cgColor]
+        fadeLayer.startPoint = CGPoint(x: 0, y: 0.5)
+        fadeLayer.endPoint = CGPoint(x: 1, y: 0.5)
         let hostLayer = CALayer()
         hostLayer.addSublayer(stripLayer)
+        hostLayer.mask = fadeLayer
         layer = hostLayer
         wantsLayer = true
         clipsToBounds = true
@@ -65,6 +71,11 @@ final class MarqueeLabel: NSView {
             width: size.width,
             height: size.height
         )
+        let fade = bounds.width > 0 ? min(fadeWidth / bounds.width, 0.5) : 0
+        let leadingFade = isScrolling ? fade : 0
+        let trailingFade = isScrolling || textWidth > width ? fade : 0
+        fadeLayer.frame = bounds
+        fadeLayer.locations = [0, leadingFade, 1 - trailingFade, 1].map { NSNumber(value: Double($0)) }
         CATransaction.commit()
     }
 
