@@ -71,6 +71,10 @@ final class MusicPlayer {
         isShuffleEnabled.toggle()
     }
 
+    func showCurrentTrackInMusic() {
+        scripting.revealCurrentTrack()
+    }
+
     private func anchorPosition(_ position: TimeInterval) {
         anchoredPosition = position
         anchorDate = Date()

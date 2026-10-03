@@ -22,7 +22,10 @@ final class StatusItemController: NSObject {
     }()
 
     private lazy var popover: NSPopover = {
-        let controller = NSHostingController(rootView: PlayerPopoverView(player: player))
+        let controller = NSHostingController(rootView: PlayerPopoverView(player: player) { [weak self] in
+            self?.popover.performClose(nil)
+            self?.player.showCurrentTrackInMusic()
+        })
         controller.sizingOptions = .preferredContentSize
         let popover = NSPopover()
         popover.behavior = .transient

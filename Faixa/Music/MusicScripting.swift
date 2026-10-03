@@ -82,6 +82,20 @@ final class MusicScripting {
         tell("set shuffle enabled to \(isEnabled)")
     }
 
+    func revealCurrentTrack() {
+        run("""
+            tell application id "com.apple.Music"
+                try
+                    reveal current track
+                end try
+            end tell
+            """)
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.bundleIdentifier) else { return }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration)
+    }
+
     private func tell(_ command: String, cached: Bool = true) {
         run("tell application id \"com.apple.Music\" to \(command)", cached: cached)
     }

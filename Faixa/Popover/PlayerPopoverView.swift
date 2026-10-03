@@ -3,6 +3,7 @@ import SwiftUI
 
 struct PlayerPopoverView: View {
     let player: MusicPlayer
+    let showInMusic: () -> Void
     @State private var isHoveringArtwork = false
 
     var body: some View {
@@ -30,6 +31,7 @@ struct PlayerPopoverView: View {
             }
             .font(.system(size: 15, weight: .semibold))
             .lineLimit(1)
+            .onTapGesture(perform: showInMusic)
         }
         .padding(.horizontal, 12.5)
         .padding(.top, 13.5)
