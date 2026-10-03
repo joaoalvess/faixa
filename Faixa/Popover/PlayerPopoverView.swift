@@ -1,34 +1,63 @@
 import AppKit
-import CoreAudio
 import SwiftUI
 
 struct PlayerPopoverView: View {
     let player: MusicPlayer
-    let outputs: AudioOutputs
+    @State private var isHoveringArtwork = false
 
     var body: some View {
         VStack(spacing: 0) {
             ArtworkView(image: player.artwork)
-                .padding(.bottom, 3)
+                .overlay(alignment: .bottom) {
+                    if isHoveringArtwork {
+                        ControlPanel(player: player)
+                            .padding(8.5)
+                            .transition(.opacity)
+                    }
+                }
+                .onHover { hovering in
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isHoveringArtwork = hovering
+                    }
+                }
+                .padding(.bottom, 18.5)
 
-            VStack(spacing: 0) {
+            VStack(spacing: -3.5) {
                 Text(player.track?.title ?? "Nada tocando")
+                    .foregroundStyle(.white)
                 Text(player.track?.artist ?? " ")
+                    .foregroundStyle(.white.opacity(0.6))
             }
-            .font(.headline)
+            .font(.system(size: 15, weight: .semibold))
             .lineLimit(1)
-            .padding(.bottom, 12)
-
-            ProgressSection(player: player)
-                .padding(.bottom, 10)
-
-            PlaybackControls(player: player)
-                .padding(.bottom, 8)
-
-            VolumeRow(player: player, outputs: outputs)
         }
-        .frame(width: 166)
-        .foregroundStyle(.white)
+        .padding(.horizontal, 12.5)
+        .padding(.top, 13.5)
+        .padding(.bottom, 21)
+        .frame(width: 247)
+        .background {
+            Backdrop(image: player.artwork)
+        }
+    }
+}
+
+private struct Backdrop: View {
+    let image: NSImage?
+
+    var body: some View {
+        ZStack {
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .blur(radius: 45, opaque: true)
+                    .opacity(0.7)
+            }
+            Color.black.opacity(0.2)
+        }
+        .ignoresSafeArea()
     }
 }
 
@@ -46,77 +75,74 @@ private struct ArtworkView: View {
                     .fill(.white.opacity(0.1))
                     .overlay {
                         Image(systemName: "music.note")
-                            .font(.system(size: 44))
+                            .font(.system(size: 56))
                             .foregroundStyle(.white.opacity(0.5))
                     }
             }
         }
-        .frame(width: 166, height: 166)
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .frame(width: 222, height: 222)
+        .clipShape(RoundedRectangle(cornerRadius: 11.5, style: .continuous))
     }
 }
 
-private struct ProgressSection: View {
+private struct ControlPanel: View {
     let player: MusicPlayer
-    @State private var scrubPosition: TimeInterval?
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.5)) { context in
-            let duration = player.track?.duration ?? 0
-            let position = scrubPosition ?? player.position(at: context.date)
-
-            VStack(spacing: 4) {
-                CapsuleSlider(
-                    fraction: duration > 0 ? position / duration : 0,
-                    height: 6,
-                    onChange: { scrubPosition = $0 * duration },
-                    onCommit: { fraction in
-                        player.seek(to: fraction * duration)
-                        scrubPosition = nil
-                    }
-                )
-
-                HStack {
-                    Text(Self.format(position))
-                    Spacer()
-                    Text("-" + Self.format(duration - position))
+        VStack(spacing: 18) {
+            HStack(spacing: 0) {
+                LinkButton(track: player.track)
+                ControlButton(symbol: "backward.fill", size: 13.5, width: 34) {
+                    player.previousTrack()
                 }
-                .font(.system(size: 8, weight: .medium).monospacedDigit())
-                .foregroundStyle(.white.opacity(0.8))
-                .padding(.horizontal, 2.5)
+                .foregroundStyle(.white.opacity(0.9))
+                ControlButton(symbol: player.state == .playing ? "pause.fill" : "play.fill", size: 17, width: 34) {
+                    player.playPause()
+                }
+                .foregroundStyle(.white.opacity(0.9))
+                ControlButton(symbol: "forward.fill", size: 13.5, width: 34) {
+                    player.nextTrack()
+                }
+                .foregroundStyle(.white.opacity(0.9))
+                ControlButton(symbol: "shuffle", size: 13, width: 29.5) {
+                    player.toggleShuffle()
+                }
+                .foregroundStyle(.white.opacity(player.isShuffleEnabled ? 0.9 : 0.55))
             }
-        }
-    }
 
-    private static func format(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds))
-        return String(format: "%02d:%02d", total / 60, total % 60)
+            ProgressSection(player: player)
+        }
+        .padding(.top, 18)
+        .padding(.horizontal, 12)
+        .padding(.bottom, 5)
+        .background {
+            RoundedRectangle(cornerRadius: 11.5, style: .continuous)
+                .fill(Color(white: 0.21).opacity(0.94))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 11.5, style: .continuous)
+                        .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
+                }
+        }
     }
 }
 
-private struct PlaybackControls: View {
-    let player: MusicPlayer
+private struct LinkButton: View {
+    let track: Track?
+    @State private var didCopy = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            ControlButton(symbol: player.isFavorited ? "star.fill" : "star", size: 12, width: 30) {
-                player.toggleFavorite()
+        ControlButton(symbol: didCopy ? "checkmark" : "link", size: 12.5, width: 29.5) {
+            guard let track else { return }
+            Task {
+                guard let url = await AppleMusicLink.url(for: track) else { return }
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(url.absoluteString, forType: .string)
+                didCopy = true
+                try? await Task.sleep(for: .seconds(1.5))
+                didCopy = false
             }
-            ControlButton(symbol: "backward.fill", size: 12.5, width: 33) {
-                player.previousTrack()
-            }
-            ControlButton(symbol: player.state == .playing ? "pause.fill" : "play.fill", size: 16, width: 33) {
-                player.playPause()
-            }
-            ControlButton(symbol: "forward.fill", size: 12.5, width: 33) {
-                player.nextTrack()
-            }
-            ControlButton(symbol: "shuffle", size: 12.5, width: 30) {
-                player.toggleShuffle()
-            }
-            .opacity(player.isShuffleEnabled ? 1 : 0.45)
         }
-        .frame(height: 20)
+        .foregroundStyle(.white.opacity(0.55))
     }
 }
 
@@ -137,82 +163,40 @@ private struct ControlButton: View {
     }
 }
 
-private struct VolumeRow: View {
+private struct ProgressSection: View {
     let player: MusicPlayer
-    let outputs: AudioOutputs
+    @State private var scrubPosition: TimeInterval?
 
     var body: some View {
-        HStack(spacing: 0) {
-            Menu {
-                Picker("Saída de áudio", selection: outputSelection) {
-                    ForEach(outputs.devices) { device in
-                        Text(device.name).tag(Optional(device.id))
-                    }
-                }
-                .pickerStyle(.inline)
-            } label: {
-                Image(systemName: "hifispeaker.fill")
-                    .font(.system(size: 11))
-            }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .menuIndicator(.hidden)
-            .frame(width: 17)
+        TimelineView(.periodic(from: .now, by: 0.5)) { context in
+            let duration = player.track?.duration ?? 0
+            let position = scrubPosition ?? player.position(at: context.date)
 
-            Spacer(minLength: 0)
-
-            HStack(spacing: 8.7) {
-                Image(systemName: "speaker.wave.1.fill")
-                    .font(.system(size: 9.5))
+            VStack(spacing: 7) {
                 CapsuleSlider(
-                    fraction: player.volume / 100,
-                    height: 4,
-                    onChange: { player.setVolume($0 * 100) }
+                    fraction: duration > 0 ? position / duration : 0,
+                    height: 8,
+                    onChange: { scrubPosition = $0 * duration },
+                    onCommit: { fraction in
+                        player.seek(to: fraction * duration)
+                        scrubPosition = nil
+                    }
                 )
-                .frame(width: 89)
-                Image(systemName: "speaker.wave.2.fill")
-                    .font(.system(size: 8))
-            }
 
-            Spacer(minLength: 0)
-
-            Menu {
-                Picker("Repetir", selection: repeatSelection) {
-                    Text("Desligado").tag(RepeatMode.off)
-                    Text("Uma").tag(RepeatMode.one)
-                    Text("Todas").tag(RepeatMode.all)
+                HStack {
+                    Text(Self.format(position))
+                    Spacer()
+                    Text("-" + Self.format(duration - position))
                 }
-                Divider()
-                Button("Sair do Faixa") {
-                    NSApp.terminate(nil)
-                }
-            } label: {
-                Image(systemName: "gear")
-                    .font(.system(size: 12))
+                .font(.system(size: 12).monospacedDigit())
+                .foregroundStyle(.white.opacity(0.72))
+                .padding(.horizontal, 3)
             }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .menuIndicator(.hidden)
-            .frame(width: 13)
         }
-        .frame(height: 18)
     }
 
-    private var outputSelection: Binding<AudioDeviceID?> {
-        Binding(
-            get: { outputs.currentID },
-            set: { id in
-                if let id {
-                    outputs.select(id)
-                }
-            }
-        )
-    }
-
-    private var repeatSelection: Binding<RepeatMode> {
-        Binding(
-            get: { player.repeatMode },
-            set: { player.setRepeat($0) }
-        )
+    private static func format(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds))
+        return String(format: "%02d:%02d", total / 60, total % 60)
     }
 }

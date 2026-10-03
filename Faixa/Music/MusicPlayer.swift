@@ -8,9 +8,6 @@ final class MusicPlayer {
     private(set) var track: Track?
     private(set) var artwork: NSImage?
     private(set) var isShuffleEnabled = false
-    private(set) var repeatMode: RepeatMode = .off
-    private(set) var isFavorited = false
-    private(set) var volume: Double = 0
     private var anchoredPosition: TimeInterval = 0
     private var anchorDate = Date()
 
@@ -50,9 +47,6 @@ final class MusicPlayer {
         guard let details = scripting.details() else { return }
         anchorPosition(details.position)
         isShuffleEnabled = details.isShuffleEnabled
-        repeatMode = details.repeatMode
-        volume = details.volume
-        isFavorited = details.isFavorited
     }
 
     func playPause() {
@@ -72,26 +66,9 @@ final class MusicPlayer {
         anchorPosition(position)
     }
 
-    func setVolume(_ newVolume: Double) {
-        let rounded = newVolume.rounded()
-        guard rounded != volume else { return }
-        scripting.setVolume(Int(rounded))
-        volume = rounded
-    }
-
     func toggleShuffle() {
         scripting.setShuffle(!isShuffleEnabled)
         isShuffleEnabled.toggle()
-    }
-
-    func setRepeat(_ mode: RepeatMode) {
-        scripting.setRepeat(mode)
-        repeatMode = mode
-    }
-
-    func toggleFavorite() {
-        guard let favorited = scripting.toggleFavorite() else { return }
-        isFavorited = favorited
     }
 
     private func anchorPosition(_ position: TimeInterval) {

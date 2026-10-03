@@ -10,9 +10,9 @@ struct CapsuleSlider: View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(.white.opacity(0.25))
+                    .fill(.white.opacity(0.15))
                 Rectangle()
-                    .fill(.white)
+                    .fill(.white.opacity(0.33))
                     .frame(width: geometry.size.width * min(max(fraction, 0), 1))
             }
             .clipShape(Capsule())

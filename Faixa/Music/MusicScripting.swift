@@ -37,29 +37,16 @@ final class MusicScripting {
         guard let result = run("""
             tell application id "com.apple.Music"
                 if player state is stopped then return {false}
-                try
-                    set isFavorited to favorited of current track
-                on error
-                    set isFavorited to false
-                end try
-                return {true, player position, shuffle enabled, song repeat is one, song repeat is all, sound volume, isFavorited}
+                return {true, player position, shuffle enabled}
             end tell
             """),
-            result.numberOfItems == 7,
+            result.numberOfItems == 3,
             result.atIndex(1)?.booleanValue == true
         else { return nil }
 
-        let repeatMode: RepeatMode =
-            if result.atIndex(4)?.booleanValue == true { .one }
-            else if result.atIndex(5)?.booleanValue == true { .all }
-            else { .off }
-
         return PlayerDetails(
             position: result.atIndex(2)?.doubleValue ?? 0,
-            isShuffleEnabled: result.atIndex(3)?.booleanValue == true,
-            repeatMode: repeatMode,
-            volume: result.atIndex(6)?.doubleValue ?? 0,
-            isFavorited: result.atIndex(7)?.booleanValue == true
+            isShuffleEnabled: result.atIndex(3)?.booleanValue == true
         )
     }
 
@@ -91,25 +78,8 @@ final class MusicScripting {
         tell("set player position to \(position)", cached: false)
     }
 
-    func setVolume(_ volume: Int) {
-        tell("set sound volume to \(volume)", cached: false)
-    }
-
     func setShuffle(_ isEnabled: Bool) {
         tell("set shuffle enabled to \(isEnabled)")
-    }
-
-    func setRepeat(_ mode: RepeatMode) {
-        tell("set song repeat to \(mode.rawValue)")
-    }
-
-    func toggleFavorite() -> Bool? {
-        run("""
-            tell application id "com.apple.Music"
-                set favorited of current track to not (favorited of current track)
-                return favorited of current track
-            end tell
-            """)?.booleanValue
     }
 
     private func tell(_ command: String, cached: Bool = true) {

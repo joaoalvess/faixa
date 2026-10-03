@@ -5,10 +5,8 @@ import SwiftUI
 @MainActor
 final class StatusItemController: NSObject {
     private let player: MusicPlayer
-    private let outputs = AudioOutputs()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    private let maxTitleWidth: CGFloat = 240
-    private let artworkSize = NSSize(width: 18, height: 18)
+    private let nowPlayingView = NowPlayingView()
 
     private lazy var idleImage: NSImage? = {
         let image = NSImage(systemSymbolName: "music.note", accessibilityDescription: "Faixa")
@@ -23,10 +21,11 @@ final class StatusItemController: NSObject {
     }()
 
     private lazy var popover: NSPopover = {
-        let controller = NSHostingController(rootView: PlayerPopoverView(player: player, outputs: outputs))
+        let controller = NSHostingController(rootView: PlayerPopoverView(player: player))
         controller.sizingOptions = .preferredContentSize
         let popover = NSPopover()
         popover.behavior = .transient
+        popover.hasFullSizeContent = true
         popover.appearance = NSAppearance(named: .darkAqua)
         popover.contentViewController = controller
         return popover
@@ -39,6 +38,7 @@ final class StatusItemController: NSObject {
             button.target = self
             button.action = #selector(handleClick(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.addSubview(nowPlayingView)
         }
         observe()
     }
@@ -60,7 +60,6 @@ final class StatusItemController: NSObject {
             return
         }
         player.refreshDetails()
-        outputs.refresh()
         NSApp.activate()
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     }
@@ -77,38 +76,76 @@ final class StatusItemController: NSObject {
         guard let button = statusItem.button else { return }
 
         guard let track = player.track, player.state != .stopped else {
+            nowPlayingView.isHidden = true
+            statusItem.length = NSStatusItem.variableLength
             button.image = idleImage
-            button.title = ""
-            button.imagePosition = .imageOnly
+            button.setAccessibilityTitle("Faixa")
             return
         }
 
-        button.image = player.artwork.map(roundedThumbnail) ?? idleImage
-        button.imagePosition = .imageLeading
-        button.title = fitted(
-            track.artist.isEmpty ? track.title : "\(track.title) — \(track.artist)",
-            font: button.font ?? .menuBarFont(ofSize: 0)
+        button.image = nil
+        button.setAccessibilityTitle(track.title)
+        nowPlayingView.isHidden = false
+        nowPlayingView.update(artwork: player.artwork, title: track.title, isPlaying: player.state == .playing)
+        statusItem.length = nowPlayingView.fittingWidth
+        nowPlayingView.frame = NSRect(x: 0, y: 0, width: nowPlayingView.fittingWidth, height: button.bounds.height)
+    }
+}
+
+private final class NowPlayingView: NSView {
+    private let horizontalPadding: CGFloat = 4
+    private let artworkSize: CGFloat = 20
+    private let spacing: CGFloat = 6
+    private let artworkView = NSImageView()
+    private let marquee = MarqueeLabel(maxWidth: 90)
+
+    var fittingWidth: CGFloat {
+        horizontalPadding * 2 + artworkSize + spacing + marquee.displayedWidth
+    }
+
+    init() {
+        super.init(frame: .zero)
+        artworkView.imageScaling = .scaleAxesIndependently
+        addSubview(artworkView)
+        addSubview(marquee)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func update(artwork: NSImage?, title: String, isPlaying: Bool) {
+        artworkView.image = artwork.map(roundedThumbnail)
+        marquee.update(text: title, isScrolling: isPlaying)
+        needsLayout = true
+    }
+
+    override func layout() {
+        super.layout()
+        artworkView.frame = NSRect(
+            x: horizontalPadding,
+            y: (bounds.height - artworkSize) / 2,
+            width: artworkSize,
+            height: artworkSize
+        )
+        marquee.frame = NSRect(
+            x: horizontalPadding + artworkSize + spacing,
+            y: 0,
+            width: marquee.displayedWidth,
+            height: bounds.height
         )
     }
 
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
+    }
+
     private func roundedThumbnail(_ artwork: NSImage) -> NSImage {
-        NSImage(size: artworkSize, flipped: false) { rect in
+        NSImage(size: NSSize(width: artworkSize, height: artworkSize), flipped: false) { rect in
             NSBezierPath(roundedRect: rect, xRadius: 4, yRadius: 4).addClip()
             artwork.draw(in: rect)
             return true
         }
-    }
-
-    private func fitted(_ text: String, font: NSFont) -> String {
-        let attributes: [NSAttributedString.Key: Any] = [.font: font]
-        func width(_ string: String) -> CGFloat { (string as NSString).size(withAttributes: attributes).width }
-
-        guard width(text) > maxTitleWidth else { return text }
-
-        var truncated = text
-        while !truncated.isEmpty, width(truncated + "…") > maxTitleWidth {
-            truncated.removeLast()
-        }
-        return truncated.trimmingCharacters(in: .whitespaces) + "…"
     }
 }
