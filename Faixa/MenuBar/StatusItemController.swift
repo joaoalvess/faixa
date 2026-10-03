@@ -1,9 +1,11 @@
 import AppKit
 import Observation
+import SwiftUI
 
 @MainActor
-final class StatusItemController {
+final class StatusItemController: NSObject {
     private let player: MusicPlayer
+    private let outputs = AudioOutputs()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let maxTitleWidth: CGFloat = 240
     private let artworkSize = NSSize(width: 18, height: 18)
@@ -14,10 +16,53 @@ final class StatusItemController {
         return image
     }()
 
+    private lazy var menu: NSMenu = {
+        let menu = NSMenu()
+        menu.addItem(withTitle: "Sair do Faixa", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        return menu
+    }()
+
+    private lazy var popover: NSPopover = {
+        let controller = NSHostingController(rootView: PlayerPopoverView(player: player, outputs: outputs))
+        controller.sizingOptions = .preferredContentSize
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.appearance = NSAppearance(named: .darkAqua)
+        popover.contentViewController = controller
+        return popover
+    }()
+
     init(player: MusicPlayer) {
         self.player = player
-        statusItem.menu = makeMenu()
+        super.init()
+        if let button = statusItem.button {
+            button.target = self
+            button.action = #selector(handleClick(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
         observe()
+    }
+
+    @objc private func handleClick(_ sender: NSStatusBarButton) {
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            popover.performClose(nil)
+            statusItem.menu = menu
+            sender.performClick(nil)
+            statusItem.menu = nil
+        } else {
+            togglePopover(relativeTo: sender)
+        }
+    }
+
+    private func togglePopover(relativeTo button: NSStatusBarButton) {
+        guard !popover.isShown else {
+            popover.performClose(nil)
+            return
+        }
+        player.refreshDetails()
+        outputs.refresh()
+        NSApp.activate()
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     }
 
     private func observe() {
@@ -65,11 +110,5 @@ final class StatusItemController {
             truncated.removeLast()
         }
         return truncated.trimmingCharacters(in: .whitespaces) + "…"
-    }
-
-    private func makeMenu() -> NSMenu {
-        let menu = NSMenu()
-        menu.addItem(withTitle: "Sair do Faixa", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        return menu
     }
 }
