@@ -1,0 +1,41 @@
+name: Faixa
+options:
+  bundleIdPrefix: dev.joaoalvess
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: J924GWS9NA
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "Apple Development"
+    ENABLE_HARDENED_RUNTIME: YES
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Faixa:
+    type: application
+    platform: macOS
+    sources:
+      - path: Faixa
+    info:
+      path: Faixa/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Faixa
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.music
+        LSUIElement: true
+        NSAppleEventsUsageDescription: "O Faixa conversa com o app Música para mostrar e controlar a faixa que está tocando."
+    entitlements:
+      path: Faixa/Resources/Faixa.entitlements
+      properties:
+        com.apple.security.automation.apple-events: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.joaoalvess.faixa
+        PRODUCT_NAME: Faixa
+        GENERATE_INFOPLIST_FILE: NO
+        ENABLE_APP_SANDBOX: NO
