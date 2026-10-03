@@ -26,10 +26,10 @@ final class MarqueeLabel: NSView {
         self.maxWidth = maxWidth
         super.init(frame: .zero)
         let hostLayer = CALayer()
-        hostLayer.masksToBounds = true
         hostLayer.addSublayer(stripLayer)
         layer = hostLayer
         wantsLayer = true
+        clipsToBounds = true
     }
 
     @available(*, unavailable)
