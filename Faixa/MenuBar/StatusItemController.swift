@@ -9,12 +9,6 @@ final class StatusItemController: NSObject {
     private let nowPlayingView = NowPlayingView()
     private var outsideClickMonitor: Any?
 
-    private lazy var idleImage: NSImage? = {
-        let image = NSImage(systemSymbolName: "music.note", accessibilityDescription: "Faixa")
-        image?.isTemplate = true
-        return image
-    }()
-
     private lazy var menu: NSMenu = {
         let menu = NSMenu()
         menu.addItem(withTitle: "Sair do Faixa", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -101,16 +95,13 @@ final class StatusItemController: NSObject {
         guard let button = statusItem.button else { return }
 
         guard let track = player.track, player.state != .stopped else {
-            nowPlayingView.isHidden = true
-            statusItem.length = NSStatusItem.variableLength
-            button.image = idleImage
-            button.setAccessibilityTitle("Faixa")
+            popover.performClose(nil)
+            statusItem.isVisible = false
             return
         }
 
-        button.image = nil
+        statusItem.isVisible = true
         button.setAccessibilityTitle(track.title)
-        nowPlayingView.isHidden = false
         nowPlayingView.update(artwork: player.artwork, title: track.title, isPlaying: player.state == .playing)
         statusItem.length = nowPlayingView.fittingWidth
         nowPlayingView.frame = NSRect(x: 0, y: 0, width: nowPlayingView.fittingWidth, height: button.bounds.height)
